@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: backend
+    runtime: python
+    pythonVersion: 3.11
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: gunicorn backend.app:app
