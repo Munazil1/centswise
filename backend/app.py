@@ -38,6 +38,9 @@ app.register_blueprint(property_routes.bp)
 app.register_blueprint(dashboard_routes.bp)
 app.register_blueprint(receipt_routes.bp)
 
+from routes.dev import dev_bp
+app.register_blueprint(dev_bp, url_prefix="/api/dev")
+
 # Error handlers
 @app.errorhandler(404)
 def not_found(error):
