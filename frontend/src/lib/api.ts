@@ -1,5 +1,15 @@
 // API Configuration for CentsWise Backend
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+const RAW_API_URL = import.meta.env.VITE_API_URL;
+
+if (!RAW_API_URL) {
+  throw new Error(
+    'VITE_API_URL is not defined. Please set it in Vercel environment variables.'
+  );
+}
+
+// Remove trailing slash if present
+const API_BASE_URL = RAW_API_URL.replace(/\/$/, '');
 
 interface ApiResponse<T = any> {
   data?: T;
@@ -13,7 +23,6 @@ class ApiClient {
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
-    // Load token from localStorage
     this.token = localStorage.getItem('auth_token');
   }
 
@@ -46,11 +55,15 @@ class ApiClient {
         headers,
       });
 
-      const data = await response.json();
+      const contentType = response.headers.get('content-type');
+      const data =
+        contentType && contentType.includes('application/json')
+          ? await response.json()
+          : null;
 
       if (!response.ok) {
         return {
-          error: data.error || 'Request failed',
+          error: data?.error || data?.message || 'Request failed',
         };
       }
 
@@ -62,7 +75,7 @@ class ApiClient {
     }
   }
 
-  // Auth endpoints
+  // Auth
   async login(username: string, password: string) {
     const response = await this.request<{ access_token: string; user: any }>(
       '/auth/login',
@@ -97,22 +110,9 @@ class ApiClient {
     });
   }
 
-  // Dashboard endpoints
+  // Dashboard
   async getDashboardMetrics() {
-    return this.request<{
-      financial: {
-        total_collected: number;
-        total_spent: number;
-        available_balance: number;
-      };
-      inventory: {
-        total_items: number;
-        available_items: number;
-        distributed_items: number;
-        active_distributions: number;
-      };
-      recent_transactions: any[];
-    }>('/dashboard/metrics');
+    return this.request('/dashboard/metrics');
   }
 
   async getFinancialSummary() {
@@ -123,139 +123,72 @@ class ApiClient {
     return this.request('/dashboard/stats');
   }
 
-  // Money management endpoints
-  async addCredit(creditData: {
-    donor_name: string;
-    amount: number;
-    date: string;
-    purpose: string;
-    payment_method?: string;
-    contact_info?: string;
-  }) {
+  // Money
+  async addCredit(creditData: any) {
     return this.request('/money/credits', {
       method: 'POST',
       body: JSON.stringify(creditData),
     });
   }
 
-  async getCredits(params?: {
-    page?: number;
-    per_page?: number;
-    search?: string;
-    start_date?: string;
-    end_date?: string;
-  }) {
-    const queryString = new URLSearchParams(
-      params as Record<string, string>
-    ).toString();
-    return this.request(`/money/credits${queryString ? `?${queryString}` : ''}`);
+  async getCredits(params?: Record<string, string>) {
+    const qs = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.request(`/money/credits${qs}`);
   }
 
-  async addExpense(expenseData: {
-    amount: number;
-    date: string;
-    purpose: string;
-    category?: string;
-    beneficiary_name?: string;
-  }) {
+  async addExpense(expenseData: any) {
     return this.request('/money/expenses', {
       method: 'POST',
       body: JSON.stringify(expenseData),
     });
   }
 
-  async getExpenses(params?: {
-    page?: number;
-    per_page?: number;
-    search?: string;
-    category?: string;
-    start_date?: string;
-    end_date?: string;
-  }) {
-    const queryString = new URLSearchParams(
-      params as Record<string, string>
-    ).toString();
-    return this.request(`/money/expenses${queryString ? `?${queryString}` : ''}`);
+  async getExpenses(params?: Record<string, string>) {
+    const qs = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.request(`/money/expenses${qs}`);
   }
 
   async getBalance() {
-    return this.request<{
-      total_collected: number;
-      total_spent: number;
-      available_balance: number;
-    }>('/money/balance');
+    return this.request('/money/balance');
   }
 
-  // Property management endpoints
-  async addItem(itemData: {
-    name: string;
-    category?: string;
-    total_quantity: number;
-    condition?: string;
-    location?: string;
-    description?: string;
-  }) {
+  // Property
+  async addItem(itemData: any) {
     return this.request('/property/items', {
       method: 'POST',
       body: JSON.stringify(itemData),
     });
   }
 
-  async getItems(params?: {
-    page?: number;
-    per_page?: number;
-    search?: string;
-    category?: string;
-    status?: string;
-  }) {
-    const queryString = new URLSearchParams(
-      params as Record<string, string>
-    ).toString();
-    return this.request(`/property/items${queryString ? `?${queryString}` : ''}`);
+  async getItems(params?: Record<string, string>) {
+    const qs = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.request(`/property/items${qs}`);
   }
 
-  async distributeItem(distributionData: {
-    item_id: number;
-    recipient_name: string;
-    distribution_date: string;
-    quantity?: number;
-    expected_return_date?: string;
-    recipient_contact?: string;
-    notes?: string;
-  }) {
+  async distributeItem(data: any) {
     return this.request('/property/distributions', {
       method: 'POST',
-      body: JSON.stringify(distributionData),
+      body: JSON.stringify(data),
     });
   }
 
-  async returnItem(distributionId: number, returnData?: {
-    return_date?: string;
-    return_condition?: string;
-    notes?: string;
-  }) {
-    return this.request(`/property/distributions/${distributionId}/return`, {
+  async returnItem(id: number, data?: any) {
+    return this.request(`/property/distributions/${id}/return`, {
       method: 'POST',
-      body: JSON.stringify(returnData || {}),
+      body: JSON.stringify(data || {}),
     });
   }
 
-  // Receipts endpoints
+  // Receipts
   async generateReceipt(creditId: number) {
     return this.request(`/receipts/generate/${creditId}`, {
       method: 'POST',
     });
   }
 
-  async getReceipts(params?: {
-    page?: number;
-    per_page?: number;
-    search?: string;
-  }) {
-    const queryString = new URLSearchParams(
-      params as Record<string, string>
-    ).toString();
-    return this.request(`/receipts${queryString ? `?${queryString}` : ''}`);
+  async getReceipts(params?: Record<string, string>) {
+    const qs = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.request(`/receipts${qs}`);
   }
 
   async downloadReceipt(receiptId: number) {
@@ -274,31 +207,26 @@ class ApiClient {
         throw new Error('Failed to download receipt');
       }
 
-      // Get the blob from response
       const blob = await response.blob();
-      
-      // Create a temporary URL for the blob
       const url = window.URL.createObjectURL(blob);
-      
-      // Create a temporary link and trigger download
+
       const a = document.createElement('a');
       a.href = url;
       a.download = `receipt_${receiptId}.pdf`;
       document.body.appendChild(a);
       a.click();
-      
-      // Clean up
+
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       return { success: true };
     } catch (error) {
-      console.error('Download error:', error);
-      return { error: error instanceof Error ? error.message : 'Download failed' };
+      return {
+        error: error instanceof Error ? error.message : 'Download failed',
+      };
     }
   }
 
-  // Health check
   async healthCheck() {
     return this.request('/health');
   }
