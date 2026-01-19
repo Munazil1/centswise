@@ -39,9 +39,9 @@ def login():
     admin.last_login = datetime.utcnow()
     db.session.commit()
     
-    # Create access token
+    # Create access token (identity must be string)
     print(f"[LOGIN] Creating token for user ID: {admin.id}, Type: {type(admin.id)}")
-    access_token = create_access_token(identity=admin.id)
+    access_token = create_access_token(identity=str(admin.id))
     print(f"[LOGIN] Token created: {access_token[:50]}...")
     print(f"[LOGIN] JWT_SECRET_KEY configured: {'Yes' if os.environ.get('JWT_SECRET_KEY') else 'No (using default)'}")
     
@@ -55,7 +55,7 @@ def login():
 @jwt_required()
 def change_password():
     """Change admin password"""
-    current_user_id = get_jwt_identity()
+    current_user_id = int(get_jwt_identity())  # Convert string back to int
     data = request.get_json()
     
     if not data or not data.get('current_password') or not data.get('new_password'):
@@ -132,7 +132,7 @@ def reset_password():
 def get_current_user():
     """Get current user information"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = int(get_jwt_identity())  # Convert string back to int
         print(f"[AUTH/ME] JWT Identity: {current_user_id}, Type: {type(current_user_id)}")
         
         admin = AdminUser.query.get(current_user_id)
