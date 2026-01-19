@@ -62,12 +62,38 @@ def invalid_token_callback(error):
 def missing_token_callback(error):
     return jsonify({'error': 'Authorization token is missing'}), 401
 
+# Initialize database and create admin user on startup
+with app.app_context():
+    try:
+        # Import models to ensure they're registered
+        from models import AdminUser, Credit, Expense, Item, Distribution, Receipt
+        
+        # Create all tables
+        db.create_all()
+        print("✓ Database tables created/verified")
+        
+        # Create default admin user if not exists
+        admin = AdminUser.query.filter_by(username='admin').first()
+        if not admin:
+            from werkzeug.security import generate_password_hash
+            admin = AdminUser(
+                username='admin',
+                password_hash=generate_password_hash('Admin@123'),
+                email='admin@centswise.local'
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print("✓ Default admin user created")
+        else:
+            print("✓ Admin user already exists")
+    except Exception as e:
+        print(f"⚠ Error during initialization: {e}")
+
 # Health check endpoint
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({'status': 'ok', 'message': 'CentsWise API is running'}), 200
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
