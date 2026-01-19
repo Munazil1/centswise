@@ -127,10 +127,18 @@ def reset_password():
 @jwt_required()
 def get_current_user():
     """Get current user information"""
-    current_user_id = get_jwt_identity()
-    admin = AdminUser.query.get(current_user_id)
-    
-    if not admin:
-        return jsonify({'error': 'User not found'}), 404
-    
-    return jsonify({'user': admin.to_dict()}), 200
+    try:
+        current_user_id = get_jwt_identity()
+        print(f"[AUTH/ME] JWT Identity: {current_user_id}, Type: {type(current_user_id)}")
+        
+        admin = AdminUser.query.get(current_user_id)
+        print(f"[AUTH/ME] Found admin: {admin}")
+        
+        if not admin:
+            print(f"[AUTH/ME] ERROR: User ID {current_user_id} not found in database")
+            return jsonify({'error': 'User not found'}), 404
+        
+        return jsonify({'user': admin.to_dict()}), 200
+    except Exception as e:
+        print(f"[AUTH/ME] Exception: {e}")
+        return jsonify({'error': str(e)}), 500
