@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import api from '@/lib/api';
 
 interface AuthContextType {
@@ -16,6 +16,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return !!localStorage.getItem('auth_token');
   });
   const [isLoading, setIsLoading] = useState(false);
+
+  // Validate token on mount
+  useEffect(() => {
+    const validateToken = async () => {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        // Try to fetch current user to validate token
+        const result = await api.getCurrentUser();
+        if (result.error) {
+          // Token is invalid, clear it
+          api.logout();
+          setIsAuthenticated(false);
+        }
+      }
+    };
+    validateToken();
+  }, []);
 
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
     setIsLoading(true);
