@@ -62,6 +62,11 @@ class ApiClient {
           : null;
 
       if (!response.ok) {
+        // Handle token expiration/invalid token
+        if (response.status === 401 && (data?.error?.includes('token') || data?.error?.includes('Token'))) {
+          this.clearToken();
+          window.location.href = '/login';
+        }
         return {
           error: data?.error || data?.message || 'Request failed',
         };
