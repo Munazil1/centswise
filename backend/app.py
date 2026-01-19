@@ -54,15 +54,23 @@ def internal_error(error):
 
 @jwt.expired_token_loader
 def expired_token_callback(jwt_header, jwt_payload):
+    print(f"[JWT] Token expired: {jwt_payload}")
     return jsonify({'error': 'Token has expired'}), 401
 
 @jwt.invalid_token_loader
 def invalid_token_callback(error):
+    print(f"[JWT] Invalid token error: {error}")
     return jsonify({'error': 'Invalid token'}), 401
 
 @jwt.unauthorized_loader
 def missing_token_callback(error):
+    print(f"[JWT] Missing token error: {error}")
     return jsonify({'error': 'Authorization token is missing'}), 401
+
+@jwt.token_in_blocklist_loader
+def check_if_token_revoked(jwt_header, jwt_payload):
+    print(f"[JWT] Checking token blocklist: {jwt_payload}")
+    return False  # We're not using a blocklist
 
 # Initialize database and create admin user on startup
 with app.app_context():

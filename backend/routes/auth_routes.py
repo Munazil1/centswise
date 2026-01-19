@@ -3,6 +3,7 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from extensions import db
 from models import AdminUser
 from datetime import datetime
+import os
 
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -39,7 +40,10 @@ def login():
     db.session.commit()
     
     # Create access token
+    print(f"[LOGIN] Creating token for user ID: {admin.id}, Type: {type(admin.id)}")
     access_token = create_access_token(identity=admin.id)
+    print(f"[LOGIN] Token created: {access_token[:50]}...")
+    print(f"[LOGIN] JWT_SECRET_KEY configured: {'Yes' if os.environ.get('JWT_SECRET_KEY') else 'No (using default)'}")
     
     return jsonify({
         'access_token': access_token,
