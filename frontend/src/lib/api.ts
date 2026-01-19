@@ -65,7 +65,10 @@ class ApiClient {
         // Handle token expiration/invalid token
         if (response.status === 401 && (data?.error?.includes('token') || data?.error?.includes('Token'))) {
           this.clearToken();
-          window.location.href = '/login';
+          // Only redirect if not already on login page
+          if (!window.location.pathname.includes('/login')) {
+            window.location.href = '/login';
+          }
         }
         return {
           error: data?.error || data?.message || 'Request failed',
