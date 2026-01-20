@@ -93,7 +93,7 @@ export default function Property() {
     }
   };
 
-  const handleDistribute = () => {
+  const handleDistribute = async () => {
     if (!distributeData.itemId || !distributeData.quantity || !distributeData.recipientName || !distributeData.recipientContact) {
       toast({
         title: "Validation Error",
@@ -116,37 +116,53 @@ export default function Property() {
       return;
     }
 
-    distributeItem({
-      itemId: distributeData.itemId,
-      itemName: item.name,
-      quantity: qty,
-      recipientName: distributeData.recipientName,
-      recipientContact: distributeData.recipientContact,
-      distributedDate: new Date().toISOString().split('T')[0],
-      expectedReturnDate: distributeData.expectedReturnDate || undefined,
-    });
+    try {
+      await distributeItem({
+        itemId: distributeData.itemId,
+        itemName: item.name,
+        quantity: qty,
+        recipientName: distributeData.recipientName,
+        recipientContact: distributeData.recipientContact,
+        distributedDate: new Date().toISOString().split('T')[0],
+        expectedReturnDate: distributeData.expectedReturnDate || undefined,
+      });
 
-    toast({
-      title: "Item Distributed",
-      description: `${qty}x ${item.name} distributed to ${distributeData.recipientName}.`,
-    });
+      toast({
+        title: "Item Distributed",
+        description: `${qty}x ${item.name} distributed to ${distributeData.recipientName} and saved to database.`,
+      });
 
-    setDistributeData({
-      itemId: '',
-      quantity: '',
-      recipientName: '',
-      recipientContact: '',
-      expectedReturnDate: '',
-    });
-    setShowDistribute(false);
+      setDistributeData({
+        itemId: '',
+        quantity: '',
+        recipientName: '',
+        recipientContact: '',
+        expectedReturnDate: '',
+      });
+      setShowDistribute(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to distribute item. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleReturn = (distributionId: string) => {
-    returnItem(distributionId, 'Good condition');
-    toast({
-      title: "Item Returned",
-      description: "The item has been marked as returned.",
-    });
+  const handleReturn = async (distributionId: string) => {
+    try {
+      await returnItem(distributionId, 'Good condition');
+      toast({
+        title: "Item Returned",
+        description: "The item has been marked as returned and saved to database.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to return item. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

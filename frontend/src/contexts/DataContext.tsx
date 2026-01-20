@@ -12,8 +12,8 @@ interface DataContextType {
   addCredit: (credit: Omit<Credit, 'id' | 'serialNumber' | 'createdAt'>) => Promise<Credit>;
   addExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => Promise<void>;
   addItem: (item: Omit<Item, 'id' | 'createdAt' | 'distributedQuantity'>) => Promise<void>;
-  distributeItem: (distribution: Omit<Distribution, 'id' | 'status'>) => void;
-  returnItem: (distributionId: string, conditionOnReturn: string) => void;
+  distributeItem: (distribution: Omit<Distribution, 'id' | 'status'>) => Promise<void>;
+  returnItem: (distributionId: string, conditionOnReturn: string) => Promise<void>;
   getNextReceiptNumber: () => string;
 }
 
@@ -281,7 +281,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }, 500);
   }, []);
 
-  const distributeItem = useCallback((distribution: Omit<Distribution, 'id' | 'status'>) => {
+  const distributeItem = useCallback(async (distribution: Omit<Distribution, 'id' | 'status'>): Promise<void> => {
+    // Local optimistic update
     const newDistribution: Distribution = {
       ...distribution,
       id: String(Date.now()),
@@ -289,7 +290,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
     setDistributions(prev => [newDistribution, ...prev]);
     
-    // Update item quantities
+    // Update item quantities locally
     setItems(prev => prev.map(item => 
       item.id === distribution.itemId 
         ? { 
@@ -299,19 +300,42 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           }
         : item
     ));
-  }, []);
+    
+    // Call backend API
+    try {
+      const result = await api.distributeItem({
+        item_id: parseInt(distribution.itemId),
+        recipient_name: distribution.recipientName,
+        recipient_contact: distribution.recipientContact,
+        quantity: distribution.quantity,
+        distribution_date: distribution.distributedDate,
+        expected_return_date: distribution.expectedReturnDate,
+      });
+      
+      if (result.data?.distribution) {
+        // Update with real ID from backend
+        newDistribution.id = String(result.data.distribution.id);
+      }
+    } catch (error) {
+      console.error('Failed to save distribution to backend:', error);
+    }
+    
+    // Refresh data from API
+    setTimeout(() => refreshData(), 500);
+  }, [refreshData]);
 
-  const returnItem = useCallback((distributionId: string, conditionOnReturn: string) => {
+  const returnItem = useCallback(async (distributionId: string, conditionOnReturn: string): Promise<void> => {
     const distribution = distributions.find(d => d.id === distributionId);
     if (!distribution) return;
 
+    // Local optimistic update
     setDistributions(prev => prev.map(d => 
       d.id === distributionId 
         ? { ...d, status: 'returned' as const, returnedDate: new Date().toISOString().split('T')[0], conditionOnReturn }
         : d
     ));
 
-    // Update item quantities
+    // Update item quantities locally
     setItems(prev => prev.map(item => 
       item.id === distribution.itemId 
         ? { 
@@ -321,7 +345,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           }
         : item
     ));
-  }, [distributions]);
+    
+    // Call backend API
+    try {
+      await api.returnItem(parseInt(distributionId), {
+        return_condition: conditionOnReturn,
+        return_date: new Date().toISOString().split('T')[0],
+      });
+    } catch (error) {
+      console.error('Failed to save return to backend:', error);
+    }
+    
+    // Refresh data from API
+    setTimeout(() => refreshData(), 500);
+  }, [distributions, refreshData]);
 
   return (
     <DataContext.Provider value={{
