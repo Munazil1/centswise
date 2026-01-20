@@ -62,8 +62,8 @@ export default function AddCredit() {
         return;
       }
 
-      // Also save locally for UI
-      const credit = addCredit({
+      // Also save locally for UI (await since it's now async)
+      const credit = await addCredit({
         donorName: formData.donorName,
         amount: parseFloat(formData.amount),
         date: formData.date,
@@ -74,7 +74,7 @@ export default function AddCredit() {
 
       // Store the backend credit ID for downloading
       if (apiResult.data?.credit?.id) {
-        credit.id = apiResult.data.credit.id;
+        credit.id = String(apiResult.data.credit.id);
       }
 
       setGeneratedCredit(credit);
@@ -112,7 +112,7 @@ export default function AddCredit() {
     
     try {
       // First, generate the receipt on backend
-      const result = await api.generateReceipt(generatedCredit.id);
+      const result = await api.generateReceipt(parseInt(generatedCredit.id));
       
       if (result.error) {
         toast({
