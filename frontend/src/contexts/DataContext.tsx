@@ -11,7 +11,7 @@ interface DataContextType {
   recentTransactions: Transaction[];
   addCredit: (credit: Omit<Credit, 'id' | 'serialNumber' | 'createdAt'>) => Promise<Credit>;
   addExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => Promise<void>;
-  addItem: (item: Omit<Item, 'id' | 'createdAt' | 'distributedQuantity'>) => void;
+  addItem: (item: Omit<Item, 'id' | 'createdAt' | 'distributedQuantity'>) => Promise<void>;
   distributeItem: (distribution: Omit<Distribution, 'id' | 'status'>) => void;
   returnItem: (distributionId: string, conditionOnReturn: string) => void;
   getNextReceiptNumber: () => string;
@@ -151,9 +151,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           date: e.date,
           purpose: e.purpose,
           category: e.category,
-          beneficiaryName: e.beneficiary_name,
+          beneficiaryName: e.beneficiary_name || '',
           createdAt: e.created_at,
         })));
+})));
       }
     } catch (error) {
       console.error('Error refreshing data:', error);
@@ -162,7 +163,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const recentTransactions: Transaction[] = [
     ...credits.map(c => ({ id: c.id, type: 'credit' as const, amount: c.amount, description: c.purpose, date: c.date, name: c.donorName })),
-    ...expenses.map(e => ({ id: e.id, type: 'expense' as const, amount: e.amount, description: e.purpose, date: e.date, name: e.beneficiaryName })),
+    ...expenses.map(e => ({ id: e.id, type: 'expense' as const, amount: e.amount, description: e.purpose, date: e.date, name: e.beneficiaryName || 'General Expense' })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
 
   const addCredit = useCallback(async (credit: Omit<Credit, 'id' | 'serialNumber' | 'createdAt'>): Promise<Credit> => {
@@ -231,14 +232,54 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => refreshData(), 500);
   }, [refreshData]);
 
-  const addItem = useCallback((item: Omit<Item, 'id' | 'createdAt' | 'distributedQuantity'>) => {
-    const newItem: Item = {
+  const addItem = useCallback(async (item: Omit<Item, 'id' | 'createdAt' | 'distributedQuantity'>): Promise<void> => {
+    // Local optimistic update
+    const tempItem: Item = {
       ...item,
       id: String(Date.now()),
       distributedQuantity: 0,
       createdAt: new Date().toISOString().split('T')[0],
     };
-    setItems(prev => [newItem, ...prev]);
+    setItems(prev => [tempItem, ...prev]);
+    
+    // Call backend API
+    try {
+      const result = await api.addItem({
+        name: item.name,
+        category: item.category,
+        total_quantity: item.totalQuantity,
+        available_quantity: item.availableQuantity,
+        condition: item.condition,
+        location: item.location,
+        description: item.description,
+      });
+      
+      if (result.data?.item) {
+        // Update with real ID from backend
+        tempItem.id = String(result.data.item.id);
+      }
+    } catch (error) {
+      console.error('Failed to save item to backend:', error);
+    }
+    
+    // Refresh items data
+    setTimeout(async () => {
+      const itemsRes = await api.getItems();
+      if (itemsRes.data?.items) {
+        setItems(itemsRes.data.items.map((i: any) => ({
+          id: String(i.id),
+          name: i.name,
+          category: i.category,
+          totalQuantity: i.total_quantity,
+          availableQuantity: i.available_quantity,
+          distributedQuantity: i.distributed_quantity,
+          condition: i.condition,
+          location: i.location,
+          description: i.description,
+          createdAt: i.created_at,
+        })));
+      }
+    }, 500);
   }, []);
 
   const distributeItem = useCallback((distribution: Omit<Distribution, 'id' | 'status'>) => {
