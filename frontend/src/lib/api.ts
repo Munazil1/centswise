@@ -183,6 +183,11 @@ class ApiClient {
     });
   }
 
+  async getDistributions(params?: Record<string, string>) {
+    const qs = params ? `?${new URLSearchParams(params).toString()}` : '';
+    return this.request(`/property/distributions${qs}`);
+  }
+
   async returnItem(id: number, data?: any) {
     return this.request(`/property/distributions/${id}/return`, {
       method: 'POST',

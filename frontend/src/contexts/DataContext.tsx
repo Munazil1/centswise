@@ -96,6 +96,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             createdAt: i.created_at,
           })));
         }
+
+        // Fetch distributions
+        const distributionsRes = await api.getDistributions();
+        if (distributionsRes.data?.distributions) {
+          setDistributions(distributionsRes.data.distributions.map((d: any) => ({
+            id: String(d.id),
+            itemId: String(d.item_id),
+            itemName: d.item?.name || '',
+            quantity: d.quantity,
+            recipientName: d.recipient_name,
+            recipientContact: d.recipient_contact,
+            distributedDate: d.distribution_date,
+            expectedReturnDate: d.expected_return_date,
+            returnedDate: d.actual_return_date,
+            conditionOnReturn: d.return_condition,
+            status: d.status,
+          })));
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -153,6 +171,39 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           category: e.category,
           beneficiaryName: e.beneficiary_name || '',
           createdAt: e.created_at,
+        })));
+      }
+
+      const itemsRes = await api.getItems();
+      if (itemsRes.data?.items) {
+        setItems(itemsRes.data.items.map((i: any) => ({
+          id: String(i.id),
+          name: i.name,
+          category: i.category,
+          totalQuantity: i.total_quantity,
+          availableQuantity: i.available_quantity,
+          distributedQuantity: i.distributed_quantity,
+          condition: i.condition,
+          location: i.location,
+          description: i.description,
+          createdAt: i.created_at,
+        })));
+      }
+
+      const distributionsRes = await api.getDistributions();
+      if (distributionsRes.data?.distributions) {
+        setDistributions(distributionsRes.data.distributions.map((d: any) => ({
+          id: String(d.id),
+          itemId: String(d.item_id),
+          itemName: d.item?.name || '',
+          quantity: d.quantity,
+          recipientName: d.recipient_name,
+          recipientContact: d.recipient_contact,
+          distributedDate: d.distribution_date,
+          expectedReturnDate: d.expected_return_date,
+          returnedDate: d.actual_return_date,
+          conditionOnReturn: d.return_condition,
+          status: d.status,
         })));
       }
     } catch (error) {
