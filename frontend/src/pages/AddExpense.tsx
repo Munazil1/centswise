@@ -37,7 +37,7 @@ export default function AddExpense() {
     }).format(amount);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.amount || !formData.purpose) {
@@ -59,27 +59,35 @@ export default function AddExpense() {
       return;
     }
 
-    addExpense({
-      amount,
-      date: formData.date,
-      purpose: formData.purpose,
-      category: formData.category,
-      beneficiaryName: formData.beneficiaryName || undefined,
-    });
+    try {
+      await addExpense({
+        amount,
+        date: formData.date,
+        purpose: formData.purpose,
+        category: formData.category,
+        beneficiaryName: formData.beneficiaryName || undefined,
+      });
 
-    toast({
-      title: "Expense Added Successfully",
-      description: `${formatCurrency(amount)} has been recorded.`,
-    });
+      toast({
+        title: "Expense Added Successfully",
+        description: `${formatCurrency(amount)} has been recorded and saved to database.`,
+      });
 
-    // Reset form
-    setFormData({
-      amount: '',
-      date: new Date().toISOString().split('T')[0],
-      purpose: '',
-      category: 'other',
-      beneficiaryName: '',
-    });
+      // Reset form
+      setFormData({
+        amount: '',
+        date: new Date().toISOString().split('T')[0],
+        purpose: '',
+        category: 'other',
+        beneficiaryName: '',
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save expense. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

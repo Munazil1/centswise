@@ -9,8 +9,8 @@ interface DataContextType {
   distributions: Distribution[];
   metrics: DashboardMetrics;
   recentTransactions: Transaction[];
-  addCredit: (credit: Omit<Credit, 'id' | 'serialNumber' | 'createdAt'>) => Credit;
-  addExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => void;
+  addCredit: (credit: Omit<Credit, 'id' | 'serialNumber' | 'createdAt'>) => Promise<Credit>;
+  addExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => Promise<void>;
   addItem: (item: Omit<Item, 'id' | 'createdAt' | 'distributedQuantity'>) => void;
   distributeItem: (distribution: Omit<Distribution, 'id' | 'status'>) => void;
   returnItem: (distributionId: string, conditionOnReturn: string) => void;
@@ -165,31 +165,69 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     ...expenses.map(e => ({ id: e.id, type: 'expense' as const, amount: e.amount, description: e.purpose, date: e.date, name: e.beneficiaryName })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
 
-  const addCredit = useCallback((credit: Omit<Credit, 'id' | 'serialNumber' | 'createdAt'>): Credit => {
-    // Local fallback for immediate UI update
-    const newCredit: Credit = {
+  const addCredit = useCallback(async (credit: Omit<Credit, 'id' | 'serialNumber' | 'createdAt'>): Promise<Credit> => {
+    // Local optimistic update
+    const tempCredit: Credit = {
       ...credit,
       id: String(Date.now()),
       serialNumber: getNextReceiptNumber(),
       createdAt: new Date().toISOString().split('T')[0],
     };
-    setCredits(prev => [newCredit, ...prev]);
+    setCredits(prev => [tempCredit, ...prev]);
     
-    // Refresh data from API after a short delay
+    // Call backend API
+    try {
+      const result = await api.addCredit({
+        donor_name: credit.donorName,
+        amount: credit.amount,
+        date: credit.date,
+        purpose: credit.purpose,
+        payment_method: credit.paymentMethod,
+        contact_info: credit.contactInfo,
+      });
+      
+      if (result.data?.credit) {
+        // Update with real ID from backend
+        tempCredit.id = String(result.data.credit.id);
+      }
+    } catch (error) {
+      console.error('Failed to save credit to backend:', error);
+    }
+    
+    // Refresh data from API
     setTimeout(() => refreshData(), 500);
     
-    return newCredit;
+    return tempCredit;
   }, [getNextReceiptNumber, refreshData]);
 
-  const addExpense = useCallback((expense: Omit<Expense, 'id' | 'createdAt'>) => {
-    const newExpense: Expense = {
+  const addExpense = useCallback(async (expense: Omit<Expense, 'id' | 'createdAt'>): Promise<void> => {
+    // Local optimistic update
+    const tempExpense: Expense = {
       ...expense,
       id: String(Date.now()),
       createdAt: new Date().toISOString().split('T')[0],
     };
-    setExpenses(prev => [newExpense, ...prev]);
+    setExpenses(prev => [tempExpense, ...prev]);
     
-    // Refresh data from API after a short delay
+    // Call backend API
+    try {
+      const result = await api.addExpense({
+        amount: expense.amount,
+        date: expense.date,
+        purpose: expense.purpose,
+        category: expense.category,
+        beneficiary_name: expense.beneficiaryName,
+      });
+      
+      if (result.data?.expense) {
+        // Update with real ID from backend
+        tempExpense.id = String(result.data.expense.id);
+      }
+    } catch (error) {
+      console.error('Failed to save expense to backend:', error);
+    }
+    
+    // Refresh data from API
     setTimeout(() => refreshData(), 500);
   }, [refreshData]);
 
