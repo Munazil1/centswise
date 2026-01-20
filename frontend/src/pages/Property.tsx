@@ -47,7 +47,7 @@ export default function Property() {
 
   const activeDistributions = distributions.filter(d => d.status !== 'returned');
 
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     if (!newItem.name || !newItem.category || !newItem.totalQuantity) {
       toast({
         title: "Validation Error",
@@ -57,32 +57,40 @@ export default function Property() {
       return;
     }
 
-    const qty = parseInt(newItem.totalQuantity);
-    addItem({
-      name: newItem.name,
-      category: newItem.category,
-      totalQuantity: qty,
-      availableQuantity: qty,
-      condition: newItem.condition,
-      location: newItem.location,
-      description: newItem.description,
-    });
+    try {
+      const qty = parseInt(newItem.totalQuantity);
+      await addItem({
+        name: newItem.name,
+        category: newItem.category,
+        totalQuantity: qty,
+        availableQuantity: qty,
+        condition: newItem.condition,
+        location: newItem.location,
+        description: newItem.description,
+      });
 
-    toast({
-      title: "Item Added",
-      description: `${newItem.name} has been added to inventory.`,
-    });
+      toast({
+        title: "Item Added",
+        description: `${newItem.name} has been added to inventory and saved to database.`,
+      });
 
-    setNewItem({
-      name: '',
-      category: '',
-      totalQuantity: '',
-      availableQuantity: '',
-      condition: 'good',
-      location: '',
-      description: '',
-    });
-    setShowAddItem(false);
+      setNewItem({
+        name: '',
+        category: '',
+        totalQuantity: '',
+        availableQuantity: '',
+        condition: 'good',
+        location: '',
+        description: '',
+      });
+      setShowAddItem(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add item. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDistribute = () => {
