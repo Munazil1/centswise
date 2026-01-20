@@ -11,6 +11,7 @@ bp = Blueprint('property', __name__, url_prefix='/api/property')
 def add_item():
     """Add new item to inventory"""
     data = request.get_json()
+    print(f"[ADD_ITEM] Received data: {data}")
     
     if not data.get('name'):
         return jsonify({'error': 'Item name is required'}), 400
@@ -31,6 +32,7 @@ def add_item():
         
         db.session.add(item)
         db.session.commit()
+        print(f"[ADD_ITEM] Item saved with ID: {item.id}")
         
         return jsonify({
             'message': 'Item added successfully',
@@ -52,6 +54,8 @@ def get_items():
     category = request.args.get('category')
     status = request.args.get('status')
     
+    print(f"[GET_ITEMS] Fetching items - page: {page}, per_page: {per_page}")
+    
     query = Item.query
     
     if search:
@@ -70,6 +74,8 @@ def get_items():
     
     query = query.order_by(Item.name)
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    
+    print(f"[GET_ITEMS] Found {pagination.total} items, returning {len(pagination.items)} items")
     
     return jsonify({
         'items': [item.to_dict() for item in pagination.items],
