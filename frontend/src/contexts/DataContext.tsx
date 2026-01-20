@@ -154,7 +154,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           beneficiaryName: e.beneficiary_name || '',
           createdAt: e.created_at,
         })));
-})));
       }
     } catch (error) {
       console.error('Error refreshing data:', error);
