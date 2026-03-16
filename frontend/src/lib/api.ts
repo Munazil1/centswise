@@ -159,6 +159,14 @@ class ApiClient {
     return this.request(`/money/expenses${qs}`);
   }
 
+  async deleteCredit(id: number) {
+    return this.request(`/money/credits/${id}`, { method: 'DELETE' });
+  }
+
+  async deleteExpense(id: number) {
+    return this.request(`/money/expenses/${id}`, { method: 'DELETE' });
+  }
+
   async getBalance() {
     return this.request('/money/balance');
   }

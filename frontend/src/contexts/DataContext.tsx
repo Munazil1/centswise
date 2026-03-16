@@ -11,6 +11,8 @@ interface DataContextType {
   recentTransactions: Transaction[];
   addCredit: (credit: Omit<Credit, 'id' | 'serialNumber' | 'createdAt'>) => Promise<Credit>;
   addExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => Promise<void>;
+  deleteCredit: (id: string) => Promise<void>;
+  deleteExpense: (id: string) => Promise<void>;
   addItem: (item: Omit<Item, 'id' | 'createdAt' | 'distributedQuantity'>) => Promise<void>;
   distributeItem: (distribution: Omit<Distribution, 'id' | 'status'>) => Promise<void>;
   returnItem: (distributionId: string, conditionOnReturn: string) => Promise<void>;
@@ -293,6 +295,38 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => refreshData(), 500);
   }, [refreshData]);
 
+  const deleteCredit = useCallback(async (id: string): Promise<void> => {
+    const prev = credits;
+    setCredits(c => c.filter(item => item.id !== id));
+    try {
+      const result = await api.deleteCredit(parseInt(id));
+      if (result.error) {
+        setCredits(prev);
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      setCredits(prev);
+      throw error;
+    }
+    setTimeout(() => refreshData(), 500);
+  }, [credits, refreshData]);
+
+  const deleteExpense = useCallback(async (id: string): Promise<void> => {
+    const prev = expenses;
+    setExpenses(e => e.filter(item => item.id !== id));
+    try {
+      const result = await api.deleteExpense(parseInt(id));
+      if (result.error) {
+        setExpenses(prev);
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      setExpenses(prev);
+      throw error;
+    }
+    setTimeout(() => refreshData(), 500);
+  }, [expenses, refreshData]);
+
   const addItem = useCallback(async (item: Omit<Item, 'id' | 'createdAt' | 'distributedQuantity'>): Promise<void> => {
     const tempItem: Item = {
       ...item,
@@ -431,6 +465,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       recentTransactions,
       addCredit,
       addExpense,
+      deleteCredit,
+      deleteExpense,
       addItem,
       distributeItem,
       returnItem,

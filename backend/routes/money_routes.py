@@ -103,6 +103,23 @@ def get_credit(credit_id):
     return jsonify({'credit': credit.to_dict()}), 200
 
 
+@bp.route('/credits/<int:credit_id>', methods=['DELETE'])
+@jwt_required()
+def delete_credit(credit_id):
+    """Delete a credit/donation"""
+    credit = Credit.query.get(credit_id)
+    if not credit:
+        return jsonify({'error': 'Credit not found'}), 404
+
+    try:
+        db.session.delete(credit)
+        db.session.commit()
+        return jsonify({'message': 'Credit deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
 @bp.route('/expenses', methods=['POST'])
 @jwt_required()
 def add_expense():
@@ -190,6 +207,23 @@ def get_expenses():
         'pages': pagination.pages,
         'current_page': page
     }), 200
+
+
+@bp.route('/expenses/<int:expense_id>', methods=['DELETE'])
+@jwt_required()
+def delete_expense(expense_id):
+    """Delete an expense"""
+    expense = Expense.query.get(expense_id)
+    if not expense:
+        return jsonify({'error': 'Expense not found'}), 404
+
+    try:
+        db.session.delete(expense)
+        db.session.commit()
+        return jsonify({'message': 'Expense deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 
 @bp.route('/balance', methods=['GET'])
