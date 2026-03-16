@@ -15,6 +15,7 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-i
 database_url = os.environ.get('DATABASE_URL', 'sqlite:///centswise.db')
 if database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-key-change-in-production')
@@ -43,6 +44,18 @@ app.register_blueprint(property_routes.bp)
 app.register_blueprint(dashboard_routes.bp)
 app.register_blueprint(receipt_routes.bp)
 
+# ---------------------------
+# Root endpoint (NEW)
+# ---------------------------
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "status": "ok",
+        "message": "CentsWise API is running",
+        "health_check": "/api/health"
+    }), 200
+
+
 # Error handlers
 @app.errorhandler(404)
 def not_found(error):
@@ -52,6 +65,8 @@ def not_found(error):
 def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
 
+
+# JWT handlers
 @jwt.expired_token_loader
 def expired_token_callback(jwt_header, jwt_payload):
     print(f"[JWT] Token expired: {jwt_payload}")
@@ -71,6 +86,7 @@ def missing_token_callback(error):
 def check_if_token_revoked(jwt_header, jwt_payload):
     print(f"[JWT] Checking token blocklist: {jwt_payload}")
     return False  # We're not using a blocklist
+
 
 # Initialize database and create admin user on startup
 with app.app_context():
@@ -96,14 +112,21 @@ with app.app_context():
             print("✓ Default admin user created")
         else:
             print("✓ Admin user already exists")
+
     except Exception as e:
         print(f"⚠ Error during initialization: {e}")
+
 
 # Health check endpoint
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    return jsonify({'status': 'ok', 'message': 'CentsWise API is running'}), 200
+    return jsonify({
+        'status': 'ok',
+        'message': 'CentsWise API is running'
+    }), 200
 
+
+# Run app
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
