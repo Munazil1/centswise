@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Receipt, Download, Printer, Mail, Check } from 'lucide-react';
+import { Receipt, Download, Printer, Mail, Check, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Credit } from '@/types';
 import api from '@/lib/api';
@@ -29,10 +29,13 @@ export default function AddCredit() {
   
   const [showReceipt, setShowReceipt] = useState(false);
   const [generatedCredit, setGeneratedCredit] = useState<Credit | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (isSubmitting) return;
+
     if (!formData.donorName || !formData.amount || !formData.purpose) {
       toast({
         title: "Validation Error",
@@ -42,27 +45,10 @@ export default function AddCredit() {
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
-      // Save to backend API
-      const apiResult = await api.addCredit({
-        donor_name: formData.donorName,
-        amount: parseFloat(formData.amount),
-        date: formData.date,
-        purpose: formData.purpose,
-        payment_method: formData.paymentMethod,
-        contact_info: formData.contactInfo || undefined,
-      });
-
-      if (apiResult.error) {
-        toast({
-          title: "Error",
-          description: apiResult.error,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Also save locally for UI (await since it's now async)
+      // Save via DataContext (which handles the single API call + local state)
       const credit = await addCredit({
         donorName: formData.donorName,
         amount: parseFloat(formData.amount),
@@ -71,11 +57,6 @@ export default function AddCredit() {
         paymentMethod: formData.paymentMethod,
         contactInfo: formData.contactInfo || undefined,
       });
-
-      // Store the backend credit ID for downloading
-      if (apiResult.data?.credit?.id) {
-        credit.id = String(apiResult.data.credit.id);
-      }
 
       setGeneratedCredit(credit);
       setShowReceipt(true);
@@ -100,6 +81,8 @@ export default function AddCredit() {
         description: "Failed to save credit to database.",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -252,9 +235,13 @@ export default function AddCredit() {
           </div>
 
           <div className="flex justify-end pt-4 border-t border-border">
-            <Button type="submit" size="lg" className="gap-2">
-              <Check className="w-5 h-5" />
-              Save & Generate Receipt
+            <Button type="submit" size="lg" className="gap-2" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Check className="w-5 h-5" />
+              )}
+              {isSubmitting ? 'Saving...' : 'Save & Generate Receipt'}
             </Button>
           </div>
         </form>

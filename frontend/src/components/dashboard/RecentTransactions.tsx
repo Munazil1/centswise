@@ -31,7 +31,7 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
         ) : (
           transactions.map((transaction) => (
             <div 
-              key={transaction.id}
+              key={`${transaction.type}-${transaction.id}`}
               className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
             >
               <div className={cn(

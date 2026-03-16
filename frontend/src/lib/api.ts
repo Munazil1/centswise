@@ -210,8 +210,9 @@ class ApiClient {
   async downloadReceipt(receiptId: number) {
     try {
       const headers: HeadersInit = {};
-      if (this.token) {
-        headers['Authorization'] = `Bearer ${this.token}`;
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
 
       const response = await fetch(

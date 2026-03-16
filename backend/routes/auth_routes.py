@@ -3,7 +3,6 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from extensions import db
 from models import AdminUser
 from datetime import datetime
-import os
 
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -40,10 +39,7 @@ def login():
     db.session.commit()
     
     # Create access token (identity must be string)
-    print(f"[LOGIN] Creating token for user ID: {admin.id}, Type: {type(admin.id)}")
     access_token = create_access_token(identity=str(admin.id))
-    print(f"[LOGIN] Token created: {access_token[:50]}...")
-    print(f"[LOGIN] JWT_SECRET_KEY configured: {'Yes' if os.environ.get('JWT_SECRET_KEY') else 'No (using default)'}")
     
     return jsonify({
         'access_token': access_token,
@@ -132,17 +128,12 @@ def reset_password():
 def get_current_user():
     """Get current user information"""
     try:
-        current_user_id = int(get_jwt_identity())  # Convert string back to int
-        print(f"[AUTH/ME] JWT Identity: {current_user_id}, Type: {type(current_user_id)}")
-        
+        current_user_id = int(get_jwt_identity())
         admin = AdminUser.query.get(current_user_id)
-        print(f"[AUTH/ME] Found admin: {admin}")
         
         if not admin:
-            print(f"[AUTH/ME] ERROR: User ID {current_user_id} not found in database")
             return jsonify({'error': 'User not found'}), 404
         
         return jsonify({'user': admin.to_dict()}), 200
     except Exception as e:
-        print(f"[AUTH/ME] Exception: {e}")
         return jsonify({'error': str(e)}), 500

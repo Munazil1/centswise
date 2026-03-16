@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from extensions import db
 from models import Credit, Expense
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import func
 
 bp = Blueprint('money', __name__, url_prefix='/api/money')
@@ -20,6 +20,21 @@ def add_credit():
     
     try:
         credit_date = datetime.strptime(data.get('date', datetime.now().strftime('%Y-%m-%d')), '%Y-%m-%d').date()
+        
+        # Dedup: reject if an identical credit was created within the last 60 seconds
+        cutoff = datetime.utcnow() - timedelta(seconds=60)
+        duplicate = Credit.query.filter(
+            Credit.donor_name == data['donor_name'],
+            Credit.amount == float(data['amount']),
+            Credit.date == credit_date,
+            Credit.purpose == data['purpose'],
+            Credit.created_at >= cutoff
+        ).first()
+        if duplicate:
+            return jsonify({
+                'message': 'Credit already recorded',
+                'credit': duplicate.to_dict()
+            }), 200
         
         credit = Credit(
             donor_name=data['donor_name'],
@@ -101,6 +116,20 @@ def add_expense():
     
     try:
         expense_date = datetime.strptime(data.get('date', datetime.now().strftime('%Y-%m-%d')), '%Y-%m-%d').date()
+        
+        # Dedup: reject if an identical expense was created within the last 60 seconds
+        cutoff = datetime.utcnow() - timedelta(seconds=60)
+        duplicate = Expense.query.filter(
+            Expense.amount == float(data['amount']),
+            Expense.date == expense_date,
+            Expense.purpose == data['purpose'],
+            Expense.created_at >= cutoff
+        ).first()
+        if duplicate:
+            return jsonify({
+                'message': 'Expense already recorded',
+                'expense': duplicate.to_dict()
+            }), 200
         
         expense = Expense(
             amount=float(data['amount']),

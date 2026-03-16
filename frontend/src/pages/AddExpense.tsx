@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingDown, Check, Upload } from 'lucide-react';
+import { TrendingDown, Check, Upload, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const categories = [
@@ -28,6 +28,7 @@ export default function AddExpense() {
     category: 'other' as 'medical' | 'educational' | 'emergency' | 'events' | 'other',
     beneficiaryName: '',
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -39,6 +40,8 @@ export default function AddExpense() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isSubmitting) return;
 
     if (!formData.amount || !formData.purpose) {
       toast({
@@ -58,6 +61,8 @@ export default function AddExpense() {
       });
       return;
     }
+
+    setIsSubmitting(true);
 
     try {
       await addExpense({
@@ -87,6 +92,8 @@ export default function AddExpense() {
         description: "Failed to save expense. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -201,9 +208,13 @@ export default function AddExpense() {
           </div>
 
           <div className="flex justify-end pt-4 border-t border-border">
-            <Button type="submit" size="lg" className="gap-2">
-              <Check className="w-5 h-5" />
-              Record Expense
+            <Button type="submit" size="lg" className="gap-2" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Check className="w-5 h-5" />
+              )}
+              {isSubmitting ? 'Saving...' : 'Record Expense'}
             </Button>
           </div>
         </form>

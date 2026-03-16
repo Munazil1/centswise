@@ -5,16 +5,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Settings as SettingsIcon, Key, Bell, Shield, User, Save } from 'lucide-react';
+import { Settings as SettingsIcon, Key, Bell, Shield, User, Save, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import api from '@/lib/api';
 
 export default function Settings() {
   const { toast } = useToast();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  const handlePasswordChange = (e: React.FormEvent) => {
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
       toast({
@@ -32,13 +34,34 @@ export default function Settings() {
       });
       return;
     }
-    toast({
-      title: "Password Updated",
-      description: "Your password has been changed successfully.",
-    });
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+
+    setIsChangingPassword(true);
+    try {
+      const result = await api.changePassword(currentPassword, newPassword);
+      if (result.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: "Password Updated",
+        description: "Your password has been changed successfully.",
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to change password. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   return (
@@ -114,9 +137,9 @@ export default function Settings() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground">Password must be at least 8 characters long</p>
-            <Button type="submit" className="gap-2">
-              <Save className="w-4 h-4" />
-              Update Password
+            <Button type="submit" className="gap-2" disabled={isChangingPassword}>
+              {isChangingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {isChangingPassword ? 'Updating...' : 'Update Password'}
             </Button>
           </form>
         </div>

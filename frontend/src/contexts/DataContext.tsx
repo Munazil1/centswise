@@ -33,8 +33,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     availableItems: 0,
   });
 
-  // Fetch data from API on mount
+  // Fetch data from API on mount (only if authenticated)
   useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+
     const fetchData = async () => {
       try {
         // Fetch dashboard metrics
@@ -50,12 +53,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           });
         }
 
-        // Fetch credits
-        const creditsRes = await api.getCredits();
+        // Fetch credits (all records)
+        const creditsRes = await api.getCredits({ per_page: '10000' });
         if (creditsRes.data?.credits) {
           setCredits(creditsRes.data.credits.map((c: any) => ({
             id: String(c.id),
-            serialNumber: c.serial_number || `RCP-${new Date().getFullYear()}-${String(c.id).padStart(4, '0')}`,
+            serialNumber: c.receipt_serial || `RCP-${new Date().getFullYear()}-${String(c.id).padStart(4, '0')}`,
             donorName: c.donor_name,
             amount: c.amount,
             date: c.date,
@@ -66,8 +69,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           })));
         }
 
-        // Fetch expenses
-        const expensesRes = await api.getExpenses();
+        // Fetch expenses (all records)
+        const expensesRes = await api.getExpenses({ per_page: '10000' });
         if (expensesRes.data?.expenses) {
           setExpenses(expensesRes.data.expenses.map((e: any) => ({
             id: String(e.id),
@@ -80,8 +83,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           })));
         }
 
-        // Fetch items
-        const itemsRes = await api.getItems();
+        // Fetch items (all records)
+        const itemsRes = await api.getItems({ per_page: '10000' });
         if (itemsRes.data?.items) {
           setItems(itemsRes.data.items.map((i: any) => ({
             id: String(i.id),
@@ -97,13 +100,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           })));
         }
 
-        // Fetch distributions
-        const distributionsRes = await api.getDistributions();
+        // Fetch distributions (all records)
+        const distributionsRes = await api.getDistributions({ per_page: '10000' });
         if (distributionsRes.data?.distributions) {
           setDistributions(distributionsRes.data.distributions.map((d: any) => ({
             id: String(d.id),
             itemId: String(d.item_id),
-            itemName: d.item?.name || '',
+            itemName: d.item_name || '',
             quantity: d.quantity,
             recipientName: d.recipient_name,
             recipientContact: d.recipient_contact,
@@ -146,11 +149,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         });
       }
 
-      const creditsRes = await api.getCredits();
+      const creditsRes = await api.getCredits({ per_page: '10000' });
       if (creditsRes.data?.credits) {
         setCredits(creditsRes.data.credits.map((c: any) => ({
           id: String(c.id),
-          serialNumber: c.serial_number || `RCP-${new Date().getFullYear()}-${String(c.id).padStart(4, '0')}`,
+          serialNumber: c.receipt_serial || `RCP-${new Date().getFullYear()}-${String(c.id).padStart(4, '0')}`,
           donorName: c.donor_name,
           amount: c.amount,
           date: c.date,
@@ -161,7 +164,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         })));
       }
 
-      const expensesRes = await api.getExpenses();
+      const expensesRes = await api.getExpenses({ per_page: '10000' });
       if (expensesRes.data?.expenses) {
         setExpenses(expensesRes.data.expenses.map((e: any) => ({
           id: String(e.id),
@@ -174,7 +177,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         })));
       }
 
-      const itemsRes = await api.getItems();
+      const itemsRes = await api.getItems({ per_page: '10000' });
       if (itemsRes.data?.items) {
         setItems(itemsRes.data.items.map((i: any) => ({
           id: String(i.id),
@@ -190,12 +193,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         })));
       }
 
-      const distributionsRes = await api.getDistributions();
+      const distributionsRes = await api.getDistributions({ per_page: '10000' });
       if (distributionsRes.data?.distributions) {
         setDistributions(distributionsRes.data.distributions.map((d: any) => ({
           id: String(d.id),
           itemId: String(d.item_id),
-          itemName: d.item?.name || '',
+          itemName: d.item_name || '',
           quantity: d.quantity,
           recipientName: d.recipient_name,
           recipientContact: d.recipient_contact,
@@ -217,7 +220,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
 
   const addCredit = useCallback(async (credit: Omit<Credit, 'id' | 'serialNumber' | 'createdAt'>): Promise<Credit> => {
-    // Local optimistic update
     const tempCredit: Credit = {
       ...credit,
       id: String(Date.now()),
@@ -226,7 +228,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
     setCredits(prev => [tempCredit, ...prev]);
     
-    // Call backend API
     try {
       const result = await api.addCredit({
         donor_name: credit.donorName,
@@ -237,12 +238,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         contact_info: credit.contactInfo,
       });
       
+      if (result.error) {
+        // Revert optimistic update on API error
+        setCredits(prev => prev.filter(c => c.id !== tempCredit.id));
+        throw new Error(result.error);
+      }
+      
       if (result.data?.credit) {
-        // Update with real ID from backend
         tempCredit.id = String(result.data.credit.id);
       }
     } catch (error) {
-      console.error('Failed to save credit to backend:', error);
+      // Revert optimistic update on network error
+      setCredits(prev => prev.filter(c => c.id !== tempCredit.id));
+      throw error;
     }
     
     // Refresh data from API
@@ -252,7 +260,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [getNextReceiptNumber, refreshData]);
 
   const addExpense = useCallback(async (expense: Omit<Expense, 'id' | 'createdAt'>): Promise<void> => {
-    // Local optimistic update
     const tempExpense: Expense = {
       ...expense,
       id: String(Date.now()),
@@ -260,7 +267,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
     setExpenses(prev => [tempExpense, ...prev]);
     
-    // Call backend API
     try {
       const result = await api.addExpense({
         amount: expense.amount,
@@ -270,12 +276,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         beneficiary_name: expense.beneficiaryName,
       });
       
+      if (result.error) {
+        setExpenses(prev => prev.filter(e => e.id !== tempExpense.id));
+        throw new Error(result.error);
+      }
+      
       if (result.data?.expense) {
-        // Update with real ID from backend
         tempExpense.id = String(result.data.expense.id);
       }
     } catch (error) {
-      console.error('Failed to save expense to backend:', error);
+      setExpenses(prev => prev.filter(e => e.id !== tempExpense.id));
+      throw error;
     }
     
     // Refresh data from API
@@ -283,7 +294,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [refreshData]);
 
   const addItem = useCallback(async (item: Omit<Item, 'id' | 'createdAt' | 'distributedQuantity'>): Promise<void> => {
-    // Local optimistic update
     const tempItem: Item = {
       ...item,
       id: String(Date.now()),
@@ -292,7 +302,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
     setItems(prev => [tempItem, ...prev]);
     
-    // Call backend API
     try {
       const result = await api.addItem({
         name: item.name,
@@ -304,36 +313,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         description: item.description,
       });
       
+      if (result.error) {
+        setItems(prev => prev.filter(i => i.id !== tempItem.id));
+        throw new Error(result.error);
+      }
+      
       if (result.data?.item) {
-        // Update with real ID from backend
         tempItem.id = String(result.data.item.id);
       }
     } catch (error) {
-      console.error('Failed to save item to backend:', error);
+      setItems(prev => prev.filter(i => i.id !== tempItem.id));
+      throw error;
     }
     
     // Refresh items data
-    setTimeout(async () => {
-      const itemsRes = await api.getItems();
-      if (itemsRes.data?.items) {
-        setItems(itemsRes.data.items.map((i: any) => ({
-          id: String(i.id),
-          name: i.name,
-          category: i.category,
-          totalQuantity: i.total_quantity,
-          availableQuantity: i.available_quantity,
-          distributedQuantity: i.distributed_quantity,
-          condition: i.condition,
-          location: i.location,
-          description: i.description,
-          createdAt: i.created_at,
-        })));
-      }
-    }, 500);
-  }, []);
+    setTimeout(() => refreshData(), 500);
+  }, [refreshData]);
 
   const distributeItem = useCallback(async (distribution: Omit<Distribution, 'id' | 'status'>): Promise<void> => {
-    // Local optimistic update
     const newDistribution: Distribution = {
       ...distribution,
       id: String(Date.now()),
@@ -341,7 +338,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
     setDistributions(prev => [newDistribution, ...prev]);
     
-    // Update item quantities locally
     setItems(prev => prev.map(item => 
       item.id === distribution.itemId 
         ? { 
@@ -352,7 +348,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         : item
     ));
     
-    // Call backend API
     try {
       const result = await api.distributeItem({
         item_id: parseInt(distribution.itemId),
@@ -363,15 +358,30 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         expected_return_date: distribution.expectedReturnDate,
       });
       
+      if (result.error) {
+        // Revert both optimistic updates
+        setDistributions(prev => prev.filter(d => d.id !== newDistribution.id));
+        setItems(prev => prev.map(item => 
+          item.id === distribution.itemId 
+            ? { ...item, availableQuantity: item.availableQuantity + distribution.quantity, distributedQuantity: item.distributedQuantity - distribution.quantity }
+            : item
+        ));
+        throw new Error(result.error);
+      }
+      
       if (result.data?.distribution) {
-        // Update with real ID from backend
         newDistribution.id = String(result.data.distribution.id);
       }
     } catch (error) {
-      console.error('Failed to save distribution to backend:', error);
+      setDistributions(prev => prev.filter(d => d.id !== newDistribution.id));
+      setItems(prev => prev.map(item => 
+        item.id === distribution.itemId 
+          ? { ...item, availableQuantity: item.availableQuantity + distribution.quantity, distributedQuantity: item.distributedQuantity - distribution.quantity }
+          : item
+      ));
+      throw error;
     }
     
-    // Refresh data from API
     setTimeout(() => refreshData(), 500);
   }, [refreshData]);
 
