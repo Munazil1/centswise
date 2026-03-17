@@ -165,6 +165,7 @@ export default function Transactions() {
               <SelectItem value="educational">Educational</SelectItem>
               <SelectItem value="emergency">Emergency</SelectItem>
               <SelectItem value="events">Events</SelectItem>
+              <SelectItem value="rent">Rent</SelectItem>
               <SelectItem value="other">Other</SelectItem>
             </SelectContent>
           </Select>

@@ -14,6 +14,7 @@ const categories = [
   { value: 'educational', label: 'Educational', malayalam: 'വിദ്യാഭ്യാസം' },
   { value: 'emergency', label: 'Emergency', malayalam: 'അടിയന്തരം' },
   { value: 'events', label: 'Events', malayalam: 'പരിപാടികൾ' },
+  { value: 'rent', label: 'Rent', malayalam: 'വാടക' },
   { value: 'other', label: 'Other', malayalam: 'മറ്റുള്ളവ' },
 ];
 

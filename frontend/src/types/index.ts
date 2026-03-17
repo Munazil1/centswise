@@ -15,7 +15,7 @@ export interface Expense {
   amount: number;
   date: string;
   purpose: string;
-  category: 'medical' | 'educational' | 'emergency' | 'events' | 'other';
+  category: 'medical' | 'educational' | 'emergency' | 'events' | 'rent' | 'other';
   beneficiaryName?: string;
   createdAt: string;
 }
